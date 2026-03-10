@@ -1,0 +1,20 @@
+{
+  "appId": "ru.emc.toolkit",
+  "appName": "EMC Toolkit",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "allowMixedContent": true,
+    "backgroundColor": "#0D1627"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 1500,
+      "backgroundColor": "#0D1627",
+      "androidSplashResourceName": "splash",
+      "showSpinner": false
+    }
+  }
+}
