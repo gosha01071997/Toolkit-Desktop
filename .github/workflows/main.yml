@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Setup Node.js
@@ -18,147 +18,14 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Setup Java
+      - name: Setup Java 17
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
 
-      # Создаём правильную структуру папок из файлов которые лежат в корне
-      - name: Prepare project structure
-        run: |
-          mkdir -p src public/icons
-
-          # App.jsx и main.jsx перемещаем в src/
-          [ -f App.jsx ] && mv App.jsx src/App.jsx || echo "App.jsx already in src or missing"
-          [ -f main.jsx ] && mv main.jsx src/main.jsx || echo "main.jsx already in src or missing"
-
-          # Иконки в public/icons/
-          for f in icon-72.png icon-96.png icon-128.png icon-192.png icon-512.png; do
-            [ -f "$f" ] && mv "$f" public/icons/"$f" || true
-          done
-          [ -f icon.svg ] && mv icon.svg public/icon.svg || true
-          [ -f sw.js ] && mv sw.js public/sw.js || true
-          [ -f manifest.json ] && mv manifest.json public/manifest.json || true
-
-          echo "=== Структура после перемещения ==="
-          find . -not -path './.git/*' -not -name '*.yml' | head -40
-
-      # Создаём index.html если его нет
-      - name: Create index.html
-        run: |
-          if [ ! -f index.html ]; then
-          cat > index.html << 'HTML'
-          <!DOCTYPE html>
-          <html lang="ru">
-            <head>
-              <meta charset="UTF-8" />
-              <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-              <meta name="theme-color" content="#1E5BE8" />
-              <link rel="manifest" href="/manifest.json" />
-              <title>EMC Toolkit</title>
-              <style>
-                * { margin: 0; padding: 0; box-sizing: border-box; }
-                body { background: #F4F6F9; }
-                #root { max-width: 480px; margin: 0 auto; }
-              </style>
-              <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600;700;800&display=swap" rel="stylesheet" />
-            </head>
-            <body>
-              <div id="root"></div>
-              <script type="module" src="/src/main.jsx"></script>
-            </body>
-          </html>
-          HTML
-          echo "index.html создан"
-          else
-            echo "index.html уже есть"
-          fi
-
-      # Создаём package.json если нет или обновляем
-      - name: Create package.json
-        run: |
-          cat > package.json << 'PKG'
-          {
-            "name": "emc-toolkit",
-            "private": true,
-            "version": "1.0.0",
-            "type": "module",
-            "scripts": {
-              "dev": "vite",
-              "build": "vite build",
-              "preview": "vite preview"
-            },
-            "dependencies": {
-              "react": "^18.2.0",
-              "react-dom": "^18.2.0"
-            },
-            "devDependencies": {
-              "@vitejs/plugin-react": "^4.2.1",
-              "vite": "^5.0.8"
-            }
-          }
-          PKG
-
-      # Создаём vite.config.js
-      - name: Create vite config
-        run: |
-          cat > vite.config.js << 'VITE'
-          import { defineConfig } from 'vite'
-          import react from '@vitejs/plugin-react'
-          export default defineConfig({
-            plugins: [react()],
-            build: { outDir: 'dist', sourcemap: false }
-          })
-          VITE
-
-      # Создаём src/main.jsx если нет
-      - name: Create main.jsx if missing
-        run: |
-          if [ ! -f src/main.jsx ]; then
-          cat > src/main.jsx << 'MAIN'
-          import React from 'react'
-          import ReactDOM from 'react-dom/client'
-          import App from './App.jsx'
-          ReactDOM.createRoot(document.getElementById('root')).render(
-            <React.StrictMode><App /></React.StrictMode>
-          )
-          MAIN
-          echo "main.jsx создан"
-          fi
-
-      # Создаём public/manifest.json если нет
-      - name: Create manifest if missing
-        run: |
-          if [ ! -f public/manifest.json ]; then
-          cat > public/manifest.json << 'MF'
-          {
-            "name": "EMC Engineer Toolkit",
-            "short_name": "EMC Toolkit",
-            "start_url": "/",
-            "display": "standalone",
-            "background_color": "#0D1627",
-            "theme_color": "#1E5BE8",
-            "lang": "ru",
-            "icons": [
-              { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
-              { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" }
-            ]
-          }
-          MF
-          fi
-
-      # Создаём capacitor.config.json
-      - name: Create Capacitor config
-        run: |
-          cat > capacitor.config.json << 'CAP'
-          {
-            "appId": "ru.emc.toolkit",
-            "appName": "EMC Toolkit",
-            "webDir": "dist",
-            "server": { "androidScheme": "https" }
-          }
-          CAP
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
 
       - name: Install dependencies
         run: npm install
@@ -166,13 +33,20 @@ jobs:
       - name: Build React app
         run: npm run build
 
-      - name: Install Capacitor
-        run: npm install @capacitor/core @capacitor/cli @capacitor/android
+      - name: Install Capacitor 5
+        run: |
+          npm install \
+            @capacitor/core@5.7.8 \
+            @capacitor/cli@5.7.8 \
+            @capacitor/android@5.7.8
 
-      - name: Add Android platform
+      - name: Init Capacitor
+        run: npx cap init "EMC Toolkit" "ru.emc.toolkit" --web-dir dist
+
+      - name: Add Android
         run: npx cap add android
 
-      - name: Sync Capacitor
+      - name: Sync
         run: npx cap sync android
 
       - name: Build APK
@@ -181,15 +55,9 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon
 
-      - name: Build APK
-        run: |
-          cd android
-          chmod +x gradlew
-          echo "org.gradle.java.home=$JAVA_HOME" >> gradle.properties
-          echo "android.useAndroidX=true" >> gradle.properties
-          find . -name "*.gradle" -exec sed -i \
-            's/JavaVersion\.VERSION_21/JavaVersion.VERSION_17/g' {} \;
-          find . -name "*.gradle" -exec sed -i \
-            's/jvmTarget = "21"/jvmTarget = "17"/g' {} \;
-          ./gradlew assembleDebug --no-daemon \
-            -Dorg.gradle.java.home=$JAVA_HOME
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: EMC-Toolkit-APK
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30
