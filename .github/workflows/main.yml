@@ -181,9 +181,11 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon
 
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: EMC-Toolkit-APK
-          path: android/app/build/outputs/apk/debug/app-debug.apk
-          retention-days: 30
+      - name: Build APK
+        run: |
+          cd android
+          chmod +x gradlew
+          # Принудительно устанавливаем Java 17 совместимость
+          sed -i 's/JavaVersion.VERSION_21/JavaVersion.VERSION_17/g' app/build.gradle
+          sed -i 's/JavaVersion.VERSION_21/JavaVersion.VERSION_17/g' build.gradle 2>/dev/null || true
+          ./gradlew assembleDebug --no-daemon
