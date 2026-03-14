@@ -3662,7 +3662,6 @@ function EulaScreen({ onAccept, onDecline }) {
 }
 
 function AppInner() {
-  const [splash, setSplash] = useState(true);
   const [eula, setEula] = useState(() => {
     try { return !localStorage.getItem("emc_eula_accepted_v1"); } catch(e) { return false; }
   });
@@ -3672,7 +3671,6 @@ function AppInner() {
   const [quizOpen, setQuizOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
-  if (splash) return <SplashScreen onDone={() => setSplash(false)} />;
   if (eula) return (
     <EulaScreen
       onAccept={() => {
