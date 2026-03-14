@@ -3130,121 +3130,82 @@ class ErrorBoundary extends React.Component {
   }
 }
 
-// ─── SPLASH SCREEN (PS3 style) ───────────────────────────────────────────────
+// ─── SPLASH SCREEN (простая, совместимая) ───────────────────────────────────
 function SplashScreen({ onDone }) {
-  const [phase, setPhase] = useState(0); // 0=logo, 1=fade, 2=done
   const [progress, setProgress] = useState(0);
 
   useEffect(() => {
-    const t1 = setTimeout(() => setPhase(1), 2200);
-    const t2 = setTimeout(() => { setPhase(2); onDone(); }, 3000);
     let p = 0;
     const iv = setInterval(() => {
-      p += Math.random() * 8 + 3;
-      if (p >= 100) { p = 100; clearInterval(iv); }
+      p += Math.random() * 12 + 5;
+      if (p >= 100) {
+        p = 100;
+        clearInterval(iv);
+        setTimeout(onDone, 400);
+      }
       setProgress(Math.min(p, 100));
     }, 80);
-    return () => { clearTimeout(t1); clearTimeout(t2); clearInterval(iv); };
+    return () => clearInterval(iv);
   }, []);
 
   return (
     <div style={{
       position: "fixed", inset: 0, zIndex: 9999,
-      background: "radial-gradient(ellipse at 30% 40%, #0a1628 0%, #000510 60%, #000000 100%)",
-      display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-      opacity: phase === 1 ? 0 : 1, transition: "opacity 0.8s ease",
+      background: "#000510",
+      display: "flex", flexDirection: "column",
+      alignItems: "center", justifyContent: "center",
       fontFamily: "'IBM Plex Sans', sans-serif",
     }}>
-      {/* Animated background particles */}
-      <div style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none" }}>
-        {[...Array(18)].map((_, i) => (
-          <div key={i} style={{
-            position: "absolute",
-            left: `${(i * 37 + 10) % 100}%`,
-            top: `${(i * 53 + 5) % 100}%`,
-            width: i % 3 === 0 ? 3 : 1.5,
-            height: i % 3 === 0 ? 3 : 1.5,
-            borderRadius: "50%",
-            background: i % 4 === 0 ? "#1E5BE8" : i % 4 === 1 ? "#1A9B5A" : "#8A9BB8",
-            opacity: 0.4 + (i % 5) * 0.1,
-            animation: `float${i % 3} ${3 + i % 4}s ease-in-out infinite`,
-          }} />
-        ))}
-      </div>
-      <style>{`
-        @keyframes float0 { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-12px)} }
-        @keyframes float1 { 0%,100%{transform:translateY(0)} 50%{transform:translateY(8px)} }
-        @keyframes float2 { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
-        @keyframes glow { 0%,100%{opacity:0.7} 50%{opacity:1} }
-        @keyframes scanline { 0%{transform:translateY(-100%)} 100%{transform:translateY(100vh)} }
-      `}</style>
-
-      {/* Scanline effect */}
+      {/* Logo */}
       <div style={{
-        position: "absolute", left: 0, right: 0, height: 2,
-        background: "linear-gradient(90deg, transparent, rgba(30,91,232,0.3), transparent)",
-        animation: "scanline 3s linear infinite", pointerEvents: "none",
-      }} />
+        width: 88, height: 88, marginBottom: 24,
+        background: "#0D1F4E",
+        borderRadius: 22, display: "flex",
+        alignItems: "center", justifyContent: "center",
+        border: "1px solid #1E3A8A",
+      }}>
+        <svg width="50" height="50" viewBox="0 0 52 52">
+          <rect x="12" y="17" width="18" height="3.5" rx="1.5" fill="#4A9FFF"/>
+          <rect x="12" y="24" width="14" height="3.5" rx="1.5" fill="#4A9FFF"/>
+          <rect x="12" y="31" width="18" height="3.5" rx="1.5" fill="#4A9FFF"/>
+          <rect x="12" y="17" width="3.5" height="17.5" rx="1.5" fill="#4A9FFF"/>
+          <path d="M34 20 Q37 17.5 40 20 Q37 22.5 34 20" stroke="#1A9B5A" strokeWidth="2" fill="none" strokeLinecap="round"/>
+          <path d="M34 25.5 Q37 23 40 25.5 Q37 28 34 25.5" stroke="#1A9B5A" strokeWidth="2" fill="none" strokeLinecap="round"/>
+          <path d="M34 31 Q37 28.5 40 31 Q37 33.5 34 31" stroke="#E07B00" strokeWidth="2" fill="none" strokeLinecap="round"/>
+        </svg>
+      </div>
 
-      {/* Main logo block */}
-      <div style={{ textAlign: "center", position: "relative", zIndex: 1 }}>
-        {/* Hexagon icon */}
+      {/* Title */}
+      <div style={{ fontSize: 24, fontWeight: 800, letterSpacing: 3, color: "#FFFFFF", marginBottom: 6 }}>
+        EMC TOOLKIT
+      </div>
+      <div style={{ fontSize: 10, letterSpacing: 4, color: "#4A7FD4", marginBottom: 4 }}>
+        ИНСТРУМЕНТАРИЙ ИНЖЕНЕРА ЭМС
+      </div>
+      <div style={{ fontSize: 10, color: "#1E3A6E", letterSpacing: 2, marginBottom: 40 }}>
+        ГОСТ РВ 20.57.306
+      </div>
+
+      {/* Progress bar */}
+      <div style={{ width: 180 }}>
         <div style={{
-          width: 96, height: 96, margin: "0 auto 24px",
-          background: "linear-gradient(135deg, #0D1F4E 0%, #1E3A8A 50%, #1E5BE8 100%)",
-          borderRadius: 24, display: "flex", alignItems: "center", justifyContent: "center",
-          boxShadow: "0 0 40px rgba(30,91,232,0.6), 0 0 80px rgba(30,91,232,0.2), inset 0 1px 0 rgba(255,255,255,0.15)",
-          animation: "glow 2s ease-in-out infinite",
-          border: "1px solid rgba(30,91,232,0.5)",
+          width: "100%", height: 2,
+          background: "rgba(255,255,255,0.08)",
+          borderRadius: 2, overflow: "hidden",
         }}>
-          <svg width="52" height="52" viewBox="0 0 52 52">
-            <path d="M26 4 L44 14 L44 34 L26 44 L8 34 L8 14 Z" fill="none" stroke="#1E5BE8" strokeWidth="1.5" opacity="0.4"/>
-            <rect x="12" y="17" width="18" height="3.5" rx="1.5" fill="#1E5BE8"/>
-            <rect x="12" y="24" width="14" height="3.5" rx="1.5" fill="#1E5BE8"/>
-            <rect x="12" y="31" width="18" height="3.5" rx="1.5" fill="#1E5BE8"/>
-            <rect x="12" y="17" width="3.5" height="17.5" rx="1.5" fill="#1E5BE8"/>
-            <path d="M34 20 Q37 17.5 40 20 Q37 22.5 34 20" stroke="#1A9B5A" strokeWidth="2" fill="none" strokeLinecap="round"/>
-            <path d="M34 25.5 Q37 23 40 25.5 Q37 28 34 25.5" stroke="#1A9B5A" strokeWidth="2" fill="none" strokeLinecap="round"/>
-            <path d="M34 31 Q37 28.5 40 31 Q37 33.5 34 31" stroke="#E07B00" strokeWidth="2" fill="none" strokeLinecap="round"/>
-          </svg>
-        </div>
-
-        {/* Title */}
-        <div style={{
-          fontSize: 28, fontWeight: 800, letterSpacing: 3,
-          color: "#FFFFFF", marginBottom: 4,
-          textShadow: "0 0 20px rgba(30,91,232,0.8)",
-        }}>EMC TOOLKIT</div>
-        <div style={{
-          fontSize: 11, letterSpacing: 5, color: "#4A7FD4",
-          textTransform: "uppercase", marginBottom: 8,
-        }}>ИНСТРУМЕНТАРИЙ ИНЖЕНЕРА ЭМС</div>
-        <div style={{ fontSize: 11, color: "#2A4A8A", letterSpacing: 2, marginBottom: 40 }}>
-          ГОСТ РВ 20.57.306
-        </div>
-
-        {/* Progress bar PS3 style */}
-        <div style={{ width: 200, margin: "0 auto" }}>
           <div style={{
-            width: "100%", height: 2,
-            background: "rgba(255,255,255,0.08)",
-            borderRadius: 2, overflow: "hidden",
-          }}>
-            <div style={{
-              width: `${progress}%`, height: "100%",
-              background: "linear-gradient(90deg, #1E3A8A, #1E5BE8, #4A9FFF)",
-              transition: "width 0.1s linear",
-              boxShadow: "0 0 8px rgba(30,91,232,0.8)",
-            }} />
-          </div>
-          <div style={{ fontSize: 10, color: "#2A4A8A", marginTop: 8, letterSpacing: 2 }}>
-            ЗАГРУЗКА...
-          </div>
+            width: `${progress}%`, height: "100%",
+            background: "#1E5BE8",
+            borderRadius: 2,
+            transition: "width 0.08s linear",
+          }} />
+        </div>
+        <div style={{ fontSize: 10, color: "#2A4A8A", marginTop: 8, letterSpacing: 2, textAlign: "center" }}>
+          ЗАГРУЗКА {Math.round(progress)}%
         </div>
       </div>
 
-      {/* Version */}
-      <div style={{ position: "absolute", bottom: 40, fontSize: 10, color: "#1A2A4A", letterSpacing: 2 }}>
+      <div style={{ position: "absolute", bottom: 36, fontSize: 10, color: "#1A2A4A", letterSpacing: 2 }}>
         v2.0 · 2025
       </div>
     </div>
@@ -3262,11 +3223,10 @@ function EulaScreen({ onAccept }) {
       background: "#0D1627", display: "flex", flexDirection: "column",
       fontFamily: "'IBM Plex Sans', sans-serif",
     }}>
-      {/* Header */}
       <div style={{
-        background: "linear-gradient(135deg, #0D1627 0%, #1C2D50 100%)",
-        padding: "20px 20px 16px", borderBottom: "1px solid #1E2A40",
-        textAlign: "center",
+        background: "#0D1627", padding: "20px 20px 16px",
+        borderBottom: "1px solid #1E2A40", textAlign: "center",
+        paddingTop: 48,
       }}>
         <div style={{ fontSize: 18, fontWeight: 800, color: "#fff", marginBottom: 4 }}>
           🛡️ Лицензионное соглашение
@@ -3276,36 +3236,26 @@ function EulaScreen({ onAccept }) {
         </div>
       </div>
 
-      {/* Text */}
       <div
-        style={{ flex: 1, overflowY: "auto", padding: "20px 18px", color: "#C8D5E8" }}
+        style={{ flex: 1, overflowY: "auto", padding: "20px 18px", color: "#C8D5E8", WebkitOverflowScrolling: "touch" }}
         onScroll={(e) => {
           const el = e.target;
-          if (el.scrollTop + el.clientHeight >= el.scrollHeight - 20) setScrolled(true);
+          if (el.scrollTop + el.clientHeight >= el.scrollHeight - 30) setScrolled(true);
         }}
       >
-        <div style={{ fontSize: 13, lineHeight: 1.8, color: "#8A9BB8", marginBottom: 12 }}>
-          Версия 1.0 · Дата вступления в силу: 2025 г.
-        </div>
+        <div style={{ fontSize: 12, color: "#8A9BB8", marginBottom: 12 }}>Версия 1.0 · 2025 г.</div>
 
         {[
-          ["1. ПРЕДМЕТ СОГЛАШЕНИЯ",
-           "Настоящее Лицензионное соглашение (далее — Соглашение) является юридически обязывающим договором между Вами (физическим или юридическим лицом) и правообладателем программного обеспечения EMC Engineer Toolkit (далее — Приложение). Устанавливая или используя Приложение, Вы принимаете все условия настоящего Соглашения."],
-          ["2. ИСКЛЮЧИТЕЛЬНЫЕ ПРАВА",
-           "Приложение EMC Engineer Toolkit, включая все его компоненты, базы данных, алгоритмы, интерфейс, методики расчётов, шаблоны протоколов и учебные материалы, является объектом интеллектуальной собственности и защищено законодательством Российской Федерации об авторском праве (Глава 70 ГК РФ), а также международными договорами в области охраны авторских прав."],
-          ["3. ОГРАНИЧЕНИЯ ИСПОЛЬЗОВАНИЯ",
-           "Запрещается: передавать, продавать, сдавать в аренду, распространять или иным образом предоставлять Приложение третьим лицам без письменного разрешения правообладателя; декомпилировать, дизассемблировать или иным способом получать исходный код Приложения; создавать производные произведения на основе Приложения; использовать Приложение в коммерческих целях без лицензии."],
-          ["4. ОТВЕТСТВЕННОСТЬ ЗА НАРУШЕНИЕ",
-           "Незаконное распространение Приложения или его копий влечёт гражданско-правовую ответственность в виде возмещения убытков или выплаты компенсации в размере от 10 000 до 5 000 000 рублей (ст. 1301 ГК РФ), а также уголовную ответственность по ст. 146 УК РФ (до 6 лет лишения свободы при крупном размере ущерба)."],
-          ["5. ПЕРСОНАЛЬНЫЕ ДАННЫЕ",
-           "Приложение функционирует полностью в автономном режиме. Данные, вводимые пользователем (журнал испытаний, протоколы), хранятся исключительно на устройстве пользователя и не передаются третьим лицам. Функция генерации протоколов использует API для обработки запроса — при этом конфиденциальные данные не сохраняются на серверах."],
-          ["6. ОТКАЗ ОТ ГАРАНТИЙ",
-           "Приложение предоставляется «как есть». Правообладатель не несёт ответственности за точность расчётов при их использовании в критически важных системах. Результаты расчётов и протоколы подлежат верификации в соответствии с действующими нормативными документами."],
-          ["7. ОБРАТНАЯ СВЯЗЬ",
-           "По вопросам лицензирования, технической поддержки или сообщения об ошибках обращайтесь через раздел «Настройки» → «Написать разработчику»."],
+          ["1. ПРЕДМЕТ СОГЛАШЕНИЯ", "Настоящее Лицензионное соглашение является юридически обязывающим договором между Вами и правообладателем ПО EMC Engineer Toolkit. Устанавливая или используя Приложение, Вы принимаете все условия настоящего Соглашения."],
+          ["2. ИСКЛЮЧИТЕЛЬНЫЕ ПРАВА", "Приложение EMC Engineer Toolkit, включая все компоненты, базы данных, алгоритмы, интерфейс, методики расчётов и шаблоны протоколов, является объектом интеллектуальной собственности и защищено законодательством РФ (Глава 70 ГК РФ) и международными договорами."],
+          ["3. ОГРАНИЧЕНИЯ ИСПОЛЬЗОВАНИЯ", "Запрещается: передавать, продавать или распространять Приложение третьим лицам без письменного разрешения правообладателя; декомпилировать или получать исходный код; создавать производные произведения; использовать в коммерческих целях без лицензии."],
+          ["4. ОТВЕТСТВЕННОСТЬ ЗА НАРУШЕНИЕ", "Незаконное распространение влечёт гражданско-правовую ответственность: возмещение убытков или компенсация от 10 000 до 5 000 000 рублей (ст. 1301 ГК РФ), а также уголовную ответственность по ст. 146 УК РФ (до 6 лет лишения свободы)."],
+          ["5. ПЕРСОНАЛЬНЫЕ ДАННЫЕ", "Приложение работает автономно. Данные пользователя хранятся исключительно на устройстве и не передаются третьим лицам. Функция генерации протоколов использует API — конфиденциальные данные не сохраняются на серверах."],
+          ["6. ОТКАЗ ОТ ГАРАНТИЙ", "Приложение предоставляется «как есть». Правообладатель не несёт ответственности за точность расчётов при использовании в критически важных системах. Результаты подлежат верификации по действующим НД."],
+          ["7. ОБРАТНАЯ СВЯЗЬ", "По вопросам лицензирования и поддержки обращайтесь через Настройки → Написать разработчику."],
         ].map(([title, text]) => (
           <div key={title} style={{ marginBottom: 18 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: "#4A9FFF", marginBottom: 6 }}>{title}</div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "#4A9FFF", marginBottom: 6 }}>{title}</div>
             <div style={{ fontSize: 12, lineHeight: 1.75, color: "#8A9BB8" }}>{text}</div>
           </div>
         ))}
@@ -3314,12 +3264,12 @@ function EulaScreen({ onAccept }) {
           background: "rgba(30,91,232,0.1)", border: "1px solid rgba(30,91,232,0.3)",
           borderRadius: 8, padding: "12px 14px", marginTop: 8, fontSize: 12, color: "#4A9FFF",
         }}>
-          ℹ️ Прокрутите до конца для активации кнопки принятия
+          ℹ️ Прокрутите до конца для активации кнопки
         </div>
+        <div style={{ height: 20 }} />
       </div>
 
-      {/* Footer */}
-      <div style={{ padding: "16px 18px 28px", borderTop: "1px solid #1E2A40", background: "#0D1627" }}>
+      <div style={{ padding: "16px 18px 36px", borderTop: "1px solid #1E2A40", background: "#0D1627" }}>
         <div
           onClick={() => scrolled && setChecked(!checked)}
           style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 16, cursor: scrolled ? "pointer" : "default" }}
@@ -3329,26 +3279,26 @@ function EulaScreen({ onAccept }) {
             border: `2px solid ${checked ? C.accent : "#2A3A5A"}`,
             background: checked ? C.accent : "transparent",
             display: "flex", alignItems: "center", justifyContent: "center",
-            transition: "all 0.2s",
           }}>
-            {checked && <span style={{ color: "#fff", fontSize: 13, fontWeight: 900 }}>✓</span>}
+            {checked && <span style={{ color: "#fff", fontSize: 14, fontWeight: 900 }}>✓</span>}
           </div>
           <div style={{ fontSize: 12, color: "#8A9BB8", lineHeight: 1.6 }}>
-            Я прочитал(а) и принимаю условия Лицензионного соглашения. Я понимаю, что несанкционированное распространение данного приложения нарушает законодательство РФ.
+            Я прочитал(а) и принимаю условия Лицензионного соглашения. Я понимаю, что несанкционированное распространение нарушает законодательство РФ.
           </div>
         </div>
         <button
-          onClick={() => { if (checked && scrolled) { try { localStorage.setItem("emc_eula_v1", "1"); } catch(e) {} onAccept(); } }}
-          disabled={!checked || !scrolled}
+          onClick={() => {
+            if (checked && scrolled) {
+              try { localStorage.setItem("emc_eula_v1", "1"); } catch(e) {}
+              onAccept();
+            }
+          }}
           style={{
             width: "100%", padding: "15px", borderRadius: 12, border: "none",
-            background: checked && scrolled
-              ? "linear-gradient(135deg, #1A3A6E 0%, #1E5BE8 100%)"
-              : "#1A2A40",
+            background: checked && scrolled ? "#1E5BE8" : "#1A2A40",
             color: checked && scrolled ? "#fff" : "#2A3A5A",
-            fontSize: 15, fontWeight: 800, cursor: checked && scrolled ? "pointer" : "not-allowed",
-            fontFamily: "inherit", transition: "all 0.3s",
-            boxShadow: checked && scrolled ? "0 4px 14px rgba(30,91,232,0.4)" : "none",
+            fontSize: 15, fontWeight: 800, cursor: "pointer",
+            fontFamily: "inherit",
           }}
         >
           {!scrolled ? "Прокрутите текст до конца ↓" : !checked ? "Отметьте согласие ↑" : "✓ Принять и продолжить"}
@@ -3370,7 +3320,6 @@ function SettingsScreen({ onClose }) {
         <div style={{ fontSize: 18, fontWeight: 800, color: "#fff" }}>Настройки</div>
         <div style={{ fontSize: 12, color: "#8A9BB8", marginTop: 4 }}>EMC Engineer Toolkit v2.0</div>
       </div>
-
       <div style={{ fontSize: 11, fontWeight: 800, color: C.textSec, letterSpacing: 1, marginBottom: 8 }}>О ПРИЛОЖЕНИИ</div>
       <div style={styles.card}>
         {[
@@ -3385,26 +3334,22 @@ function SettingsScreen({ onClose }) {
           </div>
         ))}
       </div>
-
       <div style={{ fontSize: 11, fontWeight: 800, color: C.textSec, letterSpacing: 1, marginBottom: 8, marginTop: 4 }}>ПОДДЕРЖКА</div>
       <div style={styles.card}>
         <div style={{ fontSize: 13, color: C.textSec, marginBottom: 12, lineHeight: 1.6 }}>
           Обнаружили ошибку или хотите предложить улучшение? Напишите разработчику.
         </div>
         <a href="mailto:emc.toolkit.dev@gmail.com" style={{
-          display: "block", width: "100%", padding: "12px", borderRadius: 10,
+          display: "block", padding: "12px", borderRadius: 10,
           background: C.accentLight, border: `1px solid #B8CFFE`,
           color: C.accent, fontSize: 14, fontWeight: 700, textAlign: "center",
           textDecoration: "none",
-        }}>
-          ✉️ Написать разработчику
-        </a>
+        }}>✉️ Написать разработчику</a>
       </div>
-
       <div style={{ fontSize: 11, fontWeight: 800, color: C.textSec, letterSpacing: 1, marginBottom: 8, marginTop: 4 }}>ПРАВОВАЯ ИНФОРМАЦИЯ</div>
       <div style={styles.card}>
         <div style={{ fontSize: 12, color: C.textSec, lineHeight: 1.7 }}>
-          Приложение защищено авторским правом (© 2025). Несанкционированное распространение запрещено и влечёт ответственность по ст. 146 УК РФ и ст. 1301 ГК РФ.
+          Приложение защищено авторским правом © 2025. Несанкционированное распространение запрещено (ст. 146 УК РФ, ст. 1301 ГК РФ).
         </div>
         <div style={{ marginTop: 10, fontSize: 12, color: C.accent, cursor: "pointer", fontWeight: 600 }}
           onClick={() => { try { localStorage.removeItem("emc_eula_v1"); } catch(e) {} window.location.reload(); }}>
