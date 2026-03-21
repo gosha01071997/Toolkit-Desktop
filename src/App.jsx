@@ -1815,12 +1815,342 @@ function CableLengthCalc() {
   );
 }
 
+// Антенны по диапазонам для п.20.5/21.5
+const ANTENNAS = [
+  { id: "il0210", name: "ИЛ-0210-2", range: "1–200 МГц", fMin: 1, fMax: 200 },
+  { id: "p6522", name: "П6-522", range: "60–3000 МГц", fMin: 60, fMax: 3000 },
+  { id: "p6160", name: "П6-160", range: "200–2800 МГц", fMin: 200, fMax: 2800 },
+  { id: "p6421m", name: "П6-421М", range: "370–6000 МГц", fMin: 370, fMax: 6000 },
+  { id: "amon61823", name: "АМОН61823NF", range: "6000–18000 МГц", fMin: 6000, fMax: 18000 },
+];
+
+// Испытания
+const TESTS_CAL = [
+  { id: "p205", name: "п.20.5 — Восприимчивость к излучению (RI)", hasAntenna: true, hasPol: true },
+  { id: "p215", name: "п.21.5 — Восприимчивость к излучению, повышенные уровни (RI)", hasAntenna: true, hasPol: true },
+  { id: "p204", name: "п.20.4 — Восприимчивость к инжекции тока", hasAntenna: false, hasPol: false },
+  { id: "p214", name: "п.21.4 — Восприимчивость к инжекции тока, повышенные уровни", hasAntenna: false, hasPol: false },
+  { id: "p21ce", name: "п.21 — Кондуктивные помехи (CE)", hasAntenna: false, hasPol: false },
+  { id: "p21re", name: "п.21 — Излучаемые помехи (RE)", hasAntenna: true, hasPol: true },
+  { id: "custom", name: "✏️ Произвольный диапазон", hasAntenna: false, hasPol: false },
+];
+
+// Дефолтные диапазоны для каждого испытания
+const TEST_RANGES = {
+  p205:  { fStart: 20,   fEnd: 1000  },
+  p215:  { fStart: 20,   fEnd: 1000  },
+  p204:  { fStart: 0.15, fEnd: 400   },
+  p214:  { fStart: 0.15, fEnd: 400   },
+  p21ce: { fStart: 0.15, fEnd: 30    },
+  p21re: { fStart: 30,   fEnd: 1000  },
+  custom:{ fStart: "",   fEnd: ""    },
+};
+
+function CalibrationDotsCalc() {
+  const [testId, setTestId]       = useState("p205");
+  const [fStartIn, setFStartIn]   = useState("20");
+  const [fEndIn, setFEndIn]       = useState("1000");
+  const [stepN, setStepN]         = useState("1");       // показатель n в 10^(n/100)
+  const [polarity, setPolarity]   = useState("Гор");
+  const [antennaId, setAntennaId] = useState("p6522");
+  const [copied, setCopied]       = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+
+  const test = TESTS_CAL.find(t => t.id === testId);
+
+  // When test changes — update default range
+  const selectTest = (id) => {
+    setTestId(id);
+    const r = TEST_RANGES[id];
+    if (r.fStart !== "") { setFStartIn(String(r.fStart)); setFEndIn(String(r.fEnd)); }
+  };
+
+  const mult = Math.pow(10, parseFloat(stepN || 1) / 100);
+  const fStart = parseFloat(fStartIn);
+  const fEnd   = parseFloat(fEndIn);
+
+  const genPoints = (fs, fe) => {
+    const pts = [];
+    let f = fs;
+    while (f <= fe * 1.0001) { pts.push(f); f = f * mult; }
+    return pts;
+  };
+
+  const points = (fStart > 0 && fEnd > fStart && mult > 1) ? genPoints(fStart, fEnd) : [];
+
+  const formatF = (f) => {
+    // Всегда показываем в МГц формат XXXX,XX (4 цифры до запятой, 2 после)
+    return f.toFixed(2).replace(".", ",") + " МГц";
+  };
+
+  const copyTable = () => {
+    const header = test.hasPol
+      ? `№\tЧастота (МГц), ${polarity}\tУровень сигнала, дБм`
+      : `№\tЧастота (МГц)\tУровень сигнала, дБм`;
+    const rows = points.map((f, i) => `${i+1}\t${f.toFixed(2).replace(".", ",")}\t`).join('\n');
+    const text = header + '\n' + rows;
+    // Метод 1: современный clipboard API
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(() => {
+        setCopied(true); setTimeout(() => setCopied(false), 2000);
+      }).catch(() => fallbackCopy(text));
+    } else {
+      fallbackCopy(text);
+    }
+  };
+
+  const fallbackCopy = (text) => {
+    // Метод 2: через textarea — работает в Android WebView
+    const el = document.createElement("textarea");
+    el.value = text;
+    el.style.position = "fixed";
+    el.style.opacity = "0";
+    el.style.top = "0";
+    el.style.left = "0";
+    document.body.appendChild(el);
+    el.focus();
+    el.select();
+    try {
+      document.execCommand("copy");
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch(e) {
+      // Метод 3: показать текст для ручного копирования
+      setCopied(false);
+      alert("Не удалось скопировать автоматически. Используйте долгое нажатие на таблицу.");
+    }
+    document.body.removeChild(el);
+  };
+
+  const antenna = ANTENNAS.find(a => a.id === antennaId);
+
+  return (
+    <div>
+      <div style={styles.sectionTitle}>Таблица калибровочных точек</div>
+
+      {/* Header info */}
+      <div style={{ ...styles.card, background: "linear-gradient(135deg, #0D1627 0%, #1C2D50 100%)", border: "none", marginBottom: 12 }}>
+        <div style={{ fontSize: 12, color: "#8A9BB8", lineHeight: 1.8 }}>
+          Таблица рассчитана в соответствии с нормативной документацией на проведение испытаний на электромагнитную совместимость.
+        </div>
+      </div>
+
+      {/* Step 1: Select test */}
+      <div style={{ fontSize: 11, fontWeight: 800, color: C.textSec, letterSpacing: 1, marginBottom: 8 }}>
+        ШАГ 1 — ВЫБЕРИТЕ ИСПЫТАНИЕ
+      </div>
+      <div style={{ marginBottom: 14 }}>
+        {TESTS_CAL.map(t => (
+          <button key={t.id} onClick={() => selectTest(t.id)} style={{
+            display: "block", width: "100%", textAlign: "left",
+            padding: "10px 14px", marginBottom: 6, borderRadius: 10,
+            border: `1.5px solid ${testId === t.id ? C.accent : C.border}`,
+            background: testId === t.id ? C.accentLight : "transparent",
+            color: testId === t.id ? C.accent : C.text,
+            fontSize: 12, fontWeight: testId === t.id ? 700 : 400,
+            cursor: "pointer", fontFamily: "inherit",
+          }}>
+            {t.name}
+          </button>
+        ))}
+      </div>
+
+      {/* Step 2: Frequency range */}
+      <div style={{ fontSize: 11, fontWeight: 800, color: C.textSec, letterSpacing: 1, marginBottom: 8 }}>
+        ШАГ 2 — ДИАПАЗОН ЧАСТОТ (МГц)
+      </div>
+      <div style={{ ...styles.card, marginBottom: 14 }}>
+        <div style={{ display: "flex", gap: 10, marginBottom: 10 }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 11, color: C.textSec, marginBottom: 4 }}>Начало (МГц)</div>
+            <input style={styles.input} value={fStartIn} onChange={e => setFStartIn(e.target.value)} inputMode="decimal" placeholder="20" />
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 11, color: C.textSec, marginBottom: 4 }}>Конец (МГц)</div>
+            <input style={styles.input} value={fEndIn} onChange={e => setFEndIn(e.target.value)} inputMode="decimal" placeholder="1000" />
+          </div>
+        </div>
+        {/* Quick range buttons */}
+        <div style={{ fontSize: 11, color: C.textSec, marginBottom: 6 }}>Быстрый выбор:</div>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          {[
+            { l: "20–100", s: "20", e: "100" },
+            { l: "100–400", s: "100", e: "400" },
+            { l: "100–1000", s: "100", e: "1000" },
+            { l: "1000–6000", s: "1000", e: "6000" },
+            { l: "6000–18000", s: "6000", e: "18000" },
+            { l: "0,15–400", s: "0.15", e: "400" },
+            { l: "0,15–30", s: "0.15", e: "30" },
+            { l: "30–1000", s: "30", e: "1000" },
+          ].map(r => (
+            <button key={r.l} onClick={() => { setFStartIn(r.s); setFEndIn(r.e); }} style={{
+              padding: "5px 10px", borderRadius: 7,
+              border: `1px solid ${fStartIn === r.s && fEndIn === r.e ? C.accent : C.border}`,
+              background: fStartIn === r.s && fEndIn === r.e ? C.accentLight : "transparent",
+              color: fStartIn === r.s && fEndIn === r.e ? C.accent : C.textSec,
+              fontSize: 11, cursor: "pointer", fontFamily: "inherit",
+            }}>{r.l} МГц</button>
+          ))}
+        </div>
+      </div>
+
+      {/* Step 3: Antenna (if RI) */}
+      {test.hasAntenna && (
+        <>
+          <div style={{ fontSize: 11, fontWeight: 800, color: C.textSec, letterSpacing: 1, marginBottom: 8 }}>
+            ШАГ 3 — АНТЕННА
+          </div>
+          <div style={{ marginBottom: 14 }}>
+            {ANTENNAS.map(a => (
+              <button key={a.id} onClick={() => {
+                setAntennaId(a.id);
+                setFStartIn(String(a.fMin));
+                setFEndIn(String(a.fMax));
+              }} style={{
+                display: "block", width: "100%", textAlign: "left",
+                padding: "10px 14px", marginBottom: 6, borderRadius: 10,
+                border: `1.5px solid ${antennaId === a.id ? C.accent : C.border}`,
+                background: antennaId === a.id ? C.accentLight : "transparent",
+                color: antennaId === a.id ? C.accent : C.text,
+                fontSize: 12, fontWeight: antennaId === a.id ? 700 : 400,
+                cursor: "pointer", fontFamily: "inherit",
+              }}>
+                <span style={{ fontWeight: 700 }}>{a.name}</span>
+                <span style={{ color: C.textSec, fontSize: 11 }}> — {a.range}</span>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* Step 4: Polarisation (if RI) */}
+      {test.hasPol && (
+        <>
+          <div style={{ fontSize: 11, fontWeight: 800, color: C.textSec, letterSpacing: 1, marginBottom: 8 }}>
+            {test.hasAntenna ? "ШАГ 4" : "ШАГ 3"} — ПОЛЯРИЗАЦИЯ АНТЕННЫ
+          </div>
+          <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
+            {["Гор", "Вер"].map(p => (
+              <button key={p} onClick={() => setPolarity(p)} style={{
+                flex: 1, padding: "12px", borderRadius: 10,
+                border: `1.5px solid ${polarity === p ? C.accent : C.border}`,
+                background: polarity === p ? C.accentLight : "transparent",
+                color: polarity === p ? C.accent : C.textSec,
+                fontSize: 13, fontWeight: polarity === p ? 700 : 400,
+                cursor: "pointer", fontFamily: "inherit",
+              }}>
+                {p === "Гор" ? "🔲 Горизонтальная" : "🔳 Вертикальная"}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* Advanced settings */}
+      <button onClick={() => setShowSettings(!showSettings)} style={{
+        background: "none", border: "none", color: C.textSec, fontSize: 12,
+        cursor: "pointer", fontFamily: "inherit", marginBottom: 10,
+        display: "flex", alignItems: "center", gap: 6,
+      }}>
+        {showSettings ? "▲" : "▼"} Дополнительно (шаг n)
+      </button>
+      {showSettings && (
+        <div style={{ ...styles.card, marginBottom: 14 }}>
+          <div style={{ fontSize: 11, color: C.textSec, marginBottom: 4 }}>
+            Показатель n в формуле 10^(n/100). Стандарт КТ-160G: n=1 (шаг ≈2,33%)
+          </div>
+          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+            <input style={{ ...styles.input, flex: 1 }} value={stepN} onChange={e => setStepN(e.target.value)} inputMode="decimal" />
+            <div style={{ fontSize: 12, color: C.textSec, minWidth: 120 }}>
+              Шаг: {((Math.pow(10, parseFloat(stepN||1)/100)-1)*100).toFixed(2)}%
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+            {[{l:"n=1 (КТ-160G)",v:"1"},{l:"n=2",v:"2"},{l:"n=3",v:"3"}].map(p=>(
+              <button key={p.v} onClick={()=>setStepN(p.v)} style={{
+                padding:"4px 10px", borderRadius:7,
+                border:`1px solid ${stepN===p.v?C.accent:C.border}`,
+                background:stepN===p.v?C.accentLight:"transparent",
+                color:stepN===p.v?C.accent:C.textSec,
+                fontSize:11, cursor:"pointer", fontFamily:"inherit"
+              }}>{p.l}</button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Results */}
+      {points.length > 0 && (
+        <div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: C.textSec, letterSpacing: 1 }}>
+              ТОЧЕК: {points.length} · {fStart.toFixed(2).replace(".", ",")} – {fEnd.toFixed(2).replace(".", ",")} МГц
+              {test.hasPol && <span style={{ color: C.accent }}> · {polarity === "Гор" ? "Горизонтальная" : "Вертикальная"}</span>}
+            </div>
+            <button onClick={copyTable} style={{
+              padding: "6px 14px", borderRadius: 8,
+              border: `1px solid ${C.accent}`,
+              background: copied ? "#1A9B5A" : C.accentLight,
+              color: copied ? "#fff" : C.accent,
+              fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit",
+            }}>
+              {copied ? "✓ Скопировано" : "📋 Копировать в Excel"}
+            </button>
+          </div>
+
+          <div style={{ ...styles.card, padding: 0, overflow: "hidden" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "36px 1fr 90px", background: C.dark, padding: "8px 12px" }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#8A9BB8" }}>№</div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#8A9BB8" }}>
+                Частота {test.hasPol ? `(${polarity})` : ""}
+              </div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#8A9BB8" }}>МГц точно</div>
+            </div>
+            <div style={{ maxHeight: 380, overflowY: "auto" }}>
+              {points.map((f, i) => (
+                <div key={i} style={{
+                  display: "grid", gridTemplateColumns: "36px 1fr 90px",
+                  padding: "5px 12px", borderBottom: `1px solid ${C.border}`,
+                  background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.02)",
+                }}>
+                  <div style={{ fontSize: 11, color: C.textSec }}>{i + 1}</div>
+                  <div style={{ fontSize: 12, color: C.text, fontWeight: 600 }}>{formatF(f)}</div>
+                  <div style={{ fontSize: 11, color: C.textSec, fontFamily: "monospace" }}>{f.toFixed(2).replace(".", ",")}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ ...styles.card, background: C.accentLight, border: `1px solid #B8CFFE`, marginTop: 8 }}>
+            <div style={{ fontSize: 12, color: C.accent, lineHeight: 1.6 }}>
+              💡 Кнопка «Копировать в Excel» скопирует таблицу с заголовком и пустой колонкой «Уровень сигнала, дБм» — вставь прямо в Excel (Ctrl+V).
+            </div>
+          <div style={{ fontSize: 11, color: C.textSec, lineHeight: 1.6, marginTop: 8, paddingTop: 8, borderTop: `1px solid ${C.border}` }}>
+              ℹ️ Таблица рассчитана в соответствии с нормативной документацией на проведение испытаний на электромагнитную совместимость. Результаты носят справочный характер — ответственность за применение несёт пользователь.
+            </div>
+          <div style={{ fontSize: 11, color: C.textSec, lineHeight: 1.6, marginTop: 8 }}>
+              ℹ️ Таблица рассчитана в соответствии с нормативной документацией на проведение испытаний на электромагнитную совместимость. Результаты носят справочный характер — ответственность за применение несёт пользователь.
+            </div>
+          </div>
+        </div>
+      )}
+
+      {points.length === 0 && fStartIn && fEndIn && (
+        <div style={{ ...styles.card, textAlign: "center", color: C.textSec, fontSize: 13 }}>
+          Проверьте диапазон — начало должно быть меньше конца
+        </div>
+      )}
+    </div>
+  );
+}
+
 function CalculatorsScreen({ calcId, setCalcId }) {
   const tools = [
     { id: "db", icon: "📊", title: "dB-конвертер", sub: "дБмкВ, дБм, дБмкА, дБмкВ/м" },
     { id: "bci", icon: "⚡", title: "Расчёт инжекции тока", sub: "Уровень генератора, ток инжекции" },
     { id: "cable", icon: "🔌", title: "Потери кабеля", sub: "RG-58, LMR-400, Custom..." },
     { id: "cablelen", icon: "📏", title: "Длина кабеля по резонансу", sub: "λ/4, λ/2 и λ/1 по частоте" },
+    { id: "caldots", icon: "📋", title: "Таблица калибровочных точек", sub: "Шаг 1% по КТ-160G п.20.5, 20.4, 21.4, 21.5" },
     { id: "powgain", icon: "📶", title: "Мощность и усиление", sub: "Вход → усилитель → выход" },
     { id: "resonance", icon: "〰️", title: "Резонансная частота кабеля", sub: "По длине кабеля" },
     { id: "units", icon: "🔁", title: "Конвертер единиц", sub: "Частота, ток, напряжение..." },
@@ -1830,6 +2160,7 @@ function CalculatorsScreen({ calcId, setCalcId }) {
   if (calcId === "bci") return <><BackBtn onBack={() => setCalcId(null)} /><BciCalc /></>;
   if (calcId === "cable") return <><BackBtn onBack={() => setCalcId(null)} /><CableLossCalc /></>;
   if (calcId === "cablelen") return <><BackBtn onBack={() => setCalcId(null)} /><CableLengthCalc /></>;
+  if (calcId === "caldots") return <><BackBtn onBack={() => setCalcId(null)} /><CalibrationDotsCalc /></>;
   if (calcId === "powgain") return <><BackBtn onBack={() => setCalcId(null)} /><PowerGainCalc /></>;
   if (calcId === "resonance") return <><BackBtn onBack={() => setCalcId(null)} /><ResonanceCalc /></>;
   if (calcId === "units") return <><BackBtn onBack={() => setCalcId(null)} /><UnitConverter /></>;
