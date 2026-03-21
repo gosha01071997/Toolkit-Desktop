@@ -4057,7 +4057,7 @@ const EQUIPMENT_DATA = [
 
 function EquipDetailCard({ e, onBack, getEquipSVG }) {
   const [photoOk, setPhotoOk] = useState(true);
-  const photoPath = `./equipment/${e.photo}.webp`;
+  const photoPath = `equipment/${e.photo}.png`;
   const googleUrl = `https://www.google.com/search?q=${encodeURIComponent(e.name + " " + e.type)}&tbm=isch`;
   return (
     <div>
