@@ -1303,7 +1303,7 @@ function ErrorsScreen({ onClose }) {
   );
 }
 
-function HomeScreen({ setTab, setCalcId, onQuiz, onErrors }) {
+function HomeScreen({ setTab, setCalcId, onQuiz, onErrors, onVerify }) {
   const quick = [
     { icon: "📡", label: "dB-конвертер", tab: "calc", id: "db" },
     { icon: "⚡", label: "Расчёт инжекции тока", tab: "calc", id: "bci" },
@@ -1346,7 +1346,7 @@ function HomeScreen({ setTab, setCalcId, onQuiz, onErrors }) {
       </button>
 
       <button onClick={onErrors} style={{
-        width: "100%", marginBottom: 16, padding: "16px 20px", borderRadius: 14,
+        width: "100%", marginBottom: 10, padding: "16px 20px", borderRadius: 14,
         background: `linear-gradient(135deg, #7A1A1A 0%, #C0392B 100%)`,
         border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 14,
         boxShadow: "0 4px 16px rgba(192,57,43,0.25)"
@@ -1357,6 +1357,20 @@ function HomeScreen({ setTab, setCalcId, onQuiz, onErrors }) {
           <div style={{ fontSize: 12, color: "#FFB3B3", marginTop: 3 }}>Частые проблемы при испытаниях · Решения</div>
         </div>
         <span style={{ fontSize: 20, color: "#FFB3B3" }}>›</span>
+      </button>
+
+      <button onClick={onVerify} style={{
+        width: "100%", marginBottom: 16, padding: "16px 20px", borderRadius: 14,
+        background: `linear-gradient(135deg, #0A3A1A 0%, #1A9B5A 100%)`,
+        border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 14,
+        boxShadow: "0 4px 16px rgba(26,155,90,0.25)"
+      }}>
+        <div style={{ width: 48, height: 48, borderRadius: 12, background: "rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26 }}>📅</div>
+        <div style={{ textAlign: "left", flex: 1 }}>
+          <div style={{ fontSize: 16, fontWeight: 800, color: "#fff", letterSpacing: 0.2 }}>ПОВЕРКА ОБОРУДОВАНИЯ</div>
+          <div style={{ fontSize: 12, color: "#A8F0CC", marginTop: 3 }}>Сроки поверки · Свидетельства · Напоминания</div>
+        </div>
+        <span style={{ fontSize: 20, color: "#A8F0CC" }}>›</span>
       </button>
 
       <div style={styles.sectionTitle}>О приложении</div>
@@ -3348,7 +3362,7 @@ function TestDetail({ test, onBack }) {
     { id: "during", label: "Во время" },
     { id: "after", label: "После" },
     { id: "notes", label: "Заметки" },
-    { id: "protocol", label: "📄 Протокол" },
+
   ];
 
   return (
@@ -3451,7 +3465,7 @@ function TestDetail({ test, onBack }) {
           <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Запишите особенности конфигурации, наблюдения, отклонения от штатного протокола..." style={{ ...styles.input, minHeight: 160, resize: "vertical" }} />
         </div>
       )}
-      {tab === "protocol" && <ProtocolForm test={test} notes={notes} />}
+
     </div>
   );
 }
@@ -4057,7 +4071,7 @@ const EQUIPMENT_DATA = [
 
 function EquipDetailCard({ e, onBack, getEquipSVG }) {
   const [photoOk, setPhotoOk] = useState(true);
-  const photoPath = `equipment/${e.photo}.jpg.webp`;
+  const photoPath = `./equipment/${e.photo}.webp`;
   const googleUrl = `https://www.google.com/search?q=${encodeURIComponent(e.name + " " + e.type)}&tbm=isch`;
   return (
     <div>
@@ -4216,6 +4230,102 @@ function EquipmentTab() {
   );
 }
 
+
+// ─── НОРМЫ ПО СТЕПЕНЯМ ЖЁСТКОСТИ ────────────────────────────────────────────
+const NORMS_DATA = [
+  { id:"p15", name:"п.15 — Магнитное воздействие", unit:"А/м", rows:[
+    {sj:"1", val:"1", note:"Постоянное поле"},
+    {sj:"2", val:"3", note:""},
+    {sj:"3", val:"10", note:""},
+    {sj:"4", val:"30", note:""},
+    {sj:"5", val:"100", note:"Переменное 50 Гц"},
+  ]},
+  { id:"p204", name:"п.20.4 / п.21.4 — Инжекция тока", unit:"мА / В ЭДС", rows:[
+    {sj:"1", val:"1 мА / 0,3 В", note:""},
+    {sj:"2", val:"3 мА / 1 В", note:""},
+    {sj:"3", val:"10 мА / 3 В", note:"п.20.4 макс."},
+    {sj:"4", val:"30 мА / 10 В", note:"п.21.4 макс."},
+  ]},
+  { id:"p205", name:"п.20.5 / п.21.5 — Восприимчивость к излучению", unit:"В/м", rows:[
+    {sj:"1", val:"1", note:""},
+    {sj:"2", val:"3", note:""},
+    {sj:"3", val:"10", note:"п.20.5 макс."},
+    {sj:"4", val:"20", note:"п.21.5 макс."},
+  ]},
+  { id:"p25", name:"п.25 — Электростатический разряд", unit:"кВ", rows:[
+    {sj:"1", val:"2", note:"Контактный"},
+    {sj:"2", val:"4", note:"Контактный"},
+    {sj:"3", val:"6", note:"Воздушный"},
+    {sj:"4", val:"8", note:"Воздушный"},
+    {sj:"5", val:"15", note:"Воздушный, спец."},
+    {sj:"6", val:"25", note:"Воздушный, спец."},
+  ]},
+  { id:"p21", name:"п.21 — Кондуктивные помехи (CE) 0,15–30 МГц", unit:"дБмкВ", rows:[
+    {sj:"1", val:"79", note:"QP, 0,15–0,5 МГц"},
+    {sj:"2", val:"73", note:"QP, 0,5–5 МГц"},
+    {sj:"3", val:"66", note:"QP, 5–30 МГц"},
+    {sj:"—", val:"По ПИ", note:"Уточнять в Программе испытаний"},
+  ]},
+  { id:"p21re", name:"п.21 — Излучаемые помехи (RE) 30–1000 МГц", unit:"дБмкВ/м (на 1м)", rows:[
+    {sj:"1", val:"40", note:"30–230 МГц"},
+    {sj:"2", val:"47", note:"230–1000 МГц"},
+    {sj:"—", val:"По ПИ", note:"Уточнять в Программе испытаний"},
+  ]},
+];
+
+function NormsTab() {
+  const [selected, setSelected] = useState(null);
+  if (selected) {
+    const n = NORMS_DATA.find(x => x.id === selected);
+    return (
+      <div>
+        <button onClick={()=>setSelected(null)} style={{ background:"none", border:"none", color:C.accent, fontSize:14, fontWeight:600, cursor:"pointer", marginBottom:12, display:"flex", alignItems:"center", gap:4, fontFamily:"inherit" }}>‹ Назад</button>
+        <div style={{ ...styles.card, background:"linear-gradient(135deg, #0D1627 0%, #1C2D50 100%)", border:"none", marginBottom:12 }}>
+          <div style={{ fontSize:16, fontWeight:800, color:"#fff", marginBottom:4 }}>{n.name}</div>
+          <div style={{ fontSize:12, color:"#8A9BB8" }}>Единица измерения: {n.unit}</div>
+        </div>
+        <div style={{ ...styles.card, padding:0, overflow:"hidden", marginBottom:12 }}>
+          <div style={{ display:"grid", gridTemplateColumns:"60px 1fr 1fr", background:C.dark, padding:"8px 14px" }}>
+            <div style={{ fontSize:11, fontWeight:700, color:"#8A9BB8" }}>Ст. жёсткости</div>
+            <div style={{ fontSize:11, fontWeight:700, color:"#8A9BB8" }}>Уровень</div>
+            <div style={{ fontSize:11, fontWeight:700, color:"#8A9BB8" }}>Примечание</div>
+          </div>
+          {n.rows.map((r,i) => (
+            <div key={i} style={{ display:"grid", gridTemplateColumns:"60px 1fr 1fr", padding:"10px 14px", borderBottom:`1px solid ${C.border}`, background:i%2===0?"transparent":"rgba(255,255,255,0.02)" }}>
+              <div style={{ fontSize:14, fontWeight:800, color:C.accent }}>{r.sj}</div>
+              <div style={{ fontSize:14, fontWeight:700, color:C.text }}>{r.val} {n.unit}</div>
+              <div style={{ fontSize:12, color:C.textSec }}>{r.note}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{ ...styles.card, background:C.accentLight, border:`1px solid #B8CFFE` }}>
+          <div style={{ fontSize:12, color:C.accent, lineHeight:1.6 }}>⚠️ Конкретная степень жёсткости для Изделия определяется Программой испытаний (ПИ). Данные — справочные по ГОСТ РВ 20.57.306.</div>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div>
+      <div style={{ ...styles.card, background:"linear-gradient(135deg, #0D1627 0%, #1C2D50 100%)", border:"none", marginBottom:12 }}>
+        <div style={{ fontSize:14, fontWeight:800, color:"#fff", marginBottom:4 }}>Нормы по степеням жёсткости</div>
+        <div style={{ fontSize:12, color:"#8A9BB8" }}>ГОСТ РВ 20.57.306 — допустимые уровни воздействий</div>
+      </div>
+      {NORMS_DATA.map(n => (
+        <div key={n.id} onClick={()=>setSelected(n.id)} style={{ ...styles.card, cursor:"pointer", borderLeft:`3px solid ${C.accent}`, marginBottom:8 }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+            <div>
+              <div style={{ fontSize:13, fontWeight:700, color:C.text, marginBottom:3 }}>{n.name}</div>
+              <div style={{ fontSize:11, color:C.textSec }}>{n.rows.length} степеней · {n.unit}</div>
+            </div>
+            <div style={{ fontSize:18, color:C.textSec }}>›</div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+
 // ─── КВАЛИФИКАЦИОННЫЙ БАЗИС ───────────────────────────────────────────────────
 const QUAL_GROUPS = [
   {
@@ -4372,6 +4482,7 @@ function ReferenceScreen({ refTab, setRefTab }) {
   const tabs = [
     { id: "abbr", label: "Сокращения" },
     { id: "equip", label: "Оборудование" },
+    { id: "norms", label: "📊 Нормы" },
     { id: "qual", label: "⭐ Базис T/M/P" },
     { id: "units", label: "Единицы" },
     { id: "deps", label: "Зависимости" },
@@ -4386,6 +4497,7 @@ function ReferenceScreen({ refTab, setRefTab }) {
       <InnerTabs tabs={tabs} active={refTab} onSet={setRefTab} />
       {refTab === "abbr" && <AbbreviationsTab />}
       {refTab === "equip" && <EquipmentTab />}
+      {refTab === "norms" && <NormsTab />}
       {refTab === "qual" && <QualBasisTab />}
       {refTab === "units" && <UnitsTab />}
       {refTab === "deps" && <DependenciesTab />}
@@ -4470,7 +4582,17 @@ function LogForm({ entry, onSave, onCancel }) {
 }
 
 function LogbookScreen() {
-  const [entries, setEntries] = useState(MOCK_LOG);
+  const [entries, setEntries] = useState(() => {
+    try {
+      const saved = localStorage.getItem("emc_logbook_v1");
+      return saved ? JSON.parse(saved) : MOCK_LOG;
+    } catch(e) { return MOCK_LOG; }
+  });
+
+  const saveEntries = (newEntries) => {
+    setEntries(newEntries);
+    try { localStorage.setItem("emc_logbook_v1", JSON.stringify(newEntries)); } catch(e) {}
+  };
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState("all");
   const [editing, setEditing] = useState(null);
@@ -4479,13 +4601,22 @@ function LogbookScreen() {
   const save = useCallback((form) => {
     setEntries(prev => {
       const idx = prev.findIndex(e => e.id === form.id);
-      if (idx >= 0) { const n = [...prev]; n[idx] = form; return n; }
-      return [form, ...prev];
+      let newEntries;
+      if (idx >= 0) { newEntries = [...prev]; newEntries[idx] = form; }
+      else { newEntries = [form, ...prev]; }
+      try { localStorage.setItem("emc_logbook_v1", JSON.stringify(newEntries)); } catch(e) {}
+      return newEntries;
     });
     setEditing(null); setAdding(false);
   }, []);
 
-  const del = useCallback((id) => setEntries(prev => prev.filter(e => e.id !== id)), []);
+  const del = useCallback((id) => {
+    setEntries(prev => {
+      const newEntries = prev.filter(e => e.id !== id);
+      try { localStorage.setItem("emc_logbook_v1", JSON.stringify(newEntries)); } catch(e) {}
+      return newEntries;
+    });
+  }, []);
 
   const visible = useMemo(() => entries.filter(e => {
     const matchQ = !q || e.project.toLowerCase().includes(q.toLowerCase()) || e.testType.toLowerCase().includes(q.toLowerCase());
@@ -4600,6 +4731,285 @@ function SettingsScreen({ onClose }) {
 }
 
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
+
+
+
+// ─── ГЛОБАЛЬНЫЙ ПОИСК ────────────────────────────────────────────────────────
+function GlobalSearch({ onClose, setTab, setCalcId, onErrors, onVerify, onQuiz }) {
+  const [q, setQ] = useState("");
+
+  const lower = q.toLowerCase().trim();
+
+  const results = lower.length < 2 ? [] : [
+    // Оборудование
+    ...EQUIPMENT_DATA
+      .filter(e => e.name.toLowerCase().includes(lower) || e.type.toLowerCase().includes(lower) || e.arm.toLowerCase().includes(lower))
+      .slice(0,5)
+      .map(e => ({ icon:"🔧", title:e.name, sub:`${e.type} · ${e.arm}`, action:() => { setTab("ref"); onClose(); } })),
+    // Испытания
+    ...TESTS_DATA
+      .filter(t => t.name.toLowerCase().includes(lower) || t.short.toLowerCase().includes(lower))
+      .slice(0,3)
+      .map(t => ({ icon:"📋", title:t.name, sub:t.standard, action:() => { setTab("tests"); onClose(); } })),
+    // Калькуляторы
+    ...[
+      { id:"db", title:"dB-конвертер", sub:"Калькуляторы" },
+      { id:"bci", title:"Расчёт инжекции тока", sub:"Калькуляторы" },
+      { id:"cable", title:"Потери кабеля", sub:"Калькуляторы" },
+      { id:"caldots", title:"Таблица калибровочных точек", sub:"Калькуляторы" },
+      { id:"cablelen", title:"Длина кабеля по резонансу", sub:"Калькуляторы" },
+    ].filter(c => c.title.toLowerCase().includes(lower))
+      .map(c => ({ icon:"🧮", title:c.title, sub:c.sub, action:() => { setCalcId(c.id); setTab("calc"); onClose(); } })),
+    // Типовые ошибки
+    ...ERRORS_DATA
+      .filter(e => e.title.toLowerCase().includes(lower) || e.cat.toLowerCase().includes(lower))
+      .slice(0,3)
+      .map(e => ({ icon:"🔥", title:e.title, sub:`Ошибки · ${e.cat}`, action:() => { onErrors(); onClose(); } })),
+    // Справочник сокращений
+    ...ABBREVIATIONS
+      .filter(a => a.abbr.toLowerCase().includes(lower) || a.ru.toLowerCase().includes(lower))
+      .slice(0,3)
+      .map(a => ({ icon:"📖", title:a.abbr, sub:a.ru, action:() => { setTab("ref"); onClose(); } })),
+  ];
+
+  return (
+    <div>
+      <button onClick={onClose} style={{ background:"none", border:"none", color:C.accent, fontSize:14, fontWeight:600, cursor:"pointer", marginBottom:12, display:"flex", alignItems:"center", gap:4, fontFamily:"inherit" }}>‹ Назад</button>
+      <div style={{ fontSize:18, fontWeight:800, color:C.text, marginBottom:14 }}>🔍 Поиск по приложению</div>
+
+      <div style={styles.searchWrap}>
+        <span style={{ position:"absolute", left:12, top:"50%", transform:"translateY(-50%)", fontSize:16 }}>🔍</span>
+        <input
+          style={styles.searchInput}
+          value={q}
+          onChange={e=>setQ(e.target.value)}
+          placeholder="Оборудование, испытание, калькулятор..."
+          autoFocus
+        />
+      </div>
+
+      {lower.length >= 2 && results.length === 0 && (
+        <div style={{ ...styles.card, textAlign:"center", color:C.textSec, fontSize:13 }}>
+          Ничего не найдено по запросу «{q}»
+        </div>
+      )}
+
+      {results.map((r,i) => (
+        <div key={i} onClick={r.action} style={{ ...styles.card, cursor:"pointer", display:"flex", alignItems:"center", gap:12, marginBottom:8 }}>
+          <div style={{ fontSize:22, minWidth:32 }}>{r.icon}</div>
+          <div style={{ flex:1 }}>
+            <div style={{ fontSize:13, fontWeight:700, color:C.text }}>{r.title}</div>
+            <div style={{ fontSize:11, color:C.textSec, marginTop:2 }}>{r.sub}</div>
+          </div>
+          <div style={{ fontSize:16, color:C.textSec }}>›</div>
+        </div>
+      ))}
+
+      {lower.length < 2 && (
+        <div>
+          <div style={{ fontSize:11, fontWeight:800, color:C.textSec, letterSpacing:1, marginBottom:8 }}>БЫСТРЫЙ ПЕРЕХОД</div>
+          {[
+            { icon:"📋", label:"Испытания", action:()=>{ setTab("tests"); onClose(); } },
+            { icon:"🧮", label:"Калькуляторы", action:()=>{ setTab("calc"); onClose(); } },
+            { icon:"📖", label:"Справочник", action:()=>{ setTab("ref"); onClose(); } },
+            { icon:"📅", label:"Поверка оборудования", action:()=>{ onVerify(); onClose(); } },
+            { icon:"🔥", label:"Типовые ошибки", action:()=>{ onErrors(); onClose(); } },
+            { icon:"🧠", label:"Тестирование", action:()=>{ onQuiz(); onClose(); } },
+          ].map(item => (
+            <button key={item.label} onClick={item.action} style={{ display:"flex", alignItems:"center", gap:12, width:"100%", padding:"12px 14px", marginBottom:8, borderRadius:10, border:`1px solid ${C.border}`, background:"transparent", color:C.text, fontSize:13, cursor:"pointer", fontFamily:"inherit", textAlign:"left" }}>
+              <span style={{ fontSize:20 }}>{item.icon}</span>
+              <span style={{ fontWeight:600 }}>{item.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+// ─── ПОВЕРКА ОБОРУДОВАНИЯ ────────────────────────────────────────────────────
+function VerificationScreen({ onClose }) {
+  const [items, setItems] = useState(() => {
+    try {
+      const saved = localStorage.getItem("emc_verification_v1");
+      if (saved) return JSON.parse(saved);
+    } catch(e) {}
+    // Дефолтный список оборудования лаборатории
+    return EQUIPMENT_DATA.map(e => ({
+      id: e.id, name: e.name, type: e.type, arm: e.arm,
+      certNum: "", certDate: "", nextDate: "", status: "unknown"
+    }));
+  });
+  const [editing, setEditing] = useState(null);
+  const [filter, setFilter] = useState("all");
+
+  const save = (item) => {
+    const newItems = items.map(i => i.id === item.id ? item : i);
+    setItems(newItems);
+    try { localStorage.setItem("emc_verification_v1", JSON.stringify(newItems)); } catch(e) {}
+    setEditing(null);
+  };
+
+  const getStatus = (nextDate) => {
+    if (!nextDate) return "unknown";
+    const today = new Date();
+    const next = new Date(nextDate);
+    const daysLeft = Math.floor((next - today) / 86400000);
+    if (daysLeft < 0) return "expired";
+    if (daysLeft <= 30) return "soon";
+    return "ok";
+  };
+
+  const STATUS_CONFIG = {
+    ok:      { color:"#1A9B5A", bg:"#E6F7EE", label:"✓ Актуальна" },
+    soon:    { color:"#E07B00", bg:"#FFF4E5", label:"⚠ Истекает" },
+    expired: { color:"#D93025", bg:"#FDECEA", label:"✗ Просрочена" },
+    unknown: { color:"#8A9BB8", bg:"#F4F6F9", label:"— Не внесена" },
+  };
+
+  const enriched = items.map(i => ({ ...i, status: getStatus(i.nextDate) }));
+  const counts = { ok:0, soon:0, expired:0, unknown:0 };
+  enriched.forEach(i => counts[i.status]++);
+
+  const filtered = filter === "all" ? enriched : enriched.filter(i => i.status === filter);
+
+  if (editing) {
+    const item = editing;
+    const sc = STATUS_CONFIG[getStatus(item.nextDate)];
+    return (
+      <div>
+        <button onClick={()=>setEditing(null)} style={{ background:"none", border:"none", color:C.accent, fontSize:14, fontWeight:600, cursor:"pointer", marginBottom:12, display:"flex", alignItems:"center", gap:4, fontFamily:"inherit" }}>‹ Назад</button>
+        <div style={{ ...styles.card, background:"linear-gradient(135deg, #0D1627 0%, #1C2D50 100%)", border:"none", marginBottom:14 }}>
+          <div style={{ fontSize:16, fontWeight:800, color:"#fff", marginBottom:2 }}>{item.name}</div>
+          <div style={{ fontSize:12, color:"#8A9BB8", marginBottom:6 }}>{item.type} · {item.arm}</div>
+          {item.nextDate && <div style={{ display:"inline-block", background:sc.bg, color:sc.color, borderRadius:6, padding:"3px 10px", fontSize:12, fontWeight:700 }}>{sc.label}</div>}
+        </div>
+        {[
+          { label:"Номер свидетельства о поверке", key:"certNum", placeholder:"№ 12345/2024" },
+          { label:"Дата поверки", key:"certDate", type:"date" },
+          { label:"Следующая поверка", key:"nextDate", type:"date" },
+        ].map(f => (
+          <div key={f.key} style={{ marginBottom:12 }}>
+            <div style={{ fontSize:11, fontWeight:700, color:C.textSec, marginBottom:4 }}>{f.label}</div>
+            <input
+              style={styles.input}
+              type={f.type||"text"}
+              value={item[f.key]||""}
+              placeholder={f.placeholder||""}
+              onChange={e => setEditing({...item, [f.key]:e.target.value})}
+            />
+          </div>
+        ))}
+        <button onClick={()=>save(item)} style={{ width:"100%", padding:"13px", borderRadius:12, border:"none", background:"linear-gradient(135deg, #1A3A6E, #1E5BE8)", color:"#fff", fontSize:15, fontWeight:800, cursor:"pointer", fontFamily:"inherit" }}>
+          Сохранить
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <button onClick={onClose} style={{ background:"none", border:"none", color:C.accent, fontSize:14, fontWeight:600, cursor:"pointer", marginBottom:12, display:"flex", alignItems:"center", gap:4, fontFamily:"inherit" }}>‹ Назад</button>
+
+      {/* Summary */}
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:14 }}>
+        {[
+          { key:"ok", label:"Актуальных", count:counts.ok },
+          { key:"soon", label:"Истекает (30 дн)", count:counts.soon },
+          { key:"expired", label:"Просрочено", count:counts.expired },
+          { key:"unknown", label:"Не внесено", count:counts.unknown },
+        ].map(s => {
+          const sc = STATUS_CONFIG[s.key];
+          return (
+            <div key={s.key} onClick={()=>setFilter(filter===s.key?"all":s.key)}
+              style={{ ...styles.card, textAlign:"center", cursor:"pointer", border:`2px solid ${filter===s.key?sc.color:C.border}`, background:filter===s.key?sc.bg:"transparent" }}>
+              <div style={{ fontSize:22, fontWeight:800, color:sc.color }}>{s.count}</div>
+              <div style={{ fontSize:11, color:C.textSec, marginTop:2 }}>{s.label}</div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* List */}
+      {filtered.map(item => {
+        const sc = STATUS_CONFIG[item.status];
+        const daysLeft = item.nextDate ? Math.floor((new Date(item.nextDate)-new Date())/86400000) : null;
+        return (
+          <div key={item.id} onClick={()=>setEditing({...item})}
+            style={{ ...styles.card, cursor:"pointer", borderLeft:`3px solid ${sc.color}`, marginBottom:8 }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
+              <div style={{ flex:1 }}>
+                <div style={{ fontSize:13, fontWeight:700, color:C.text, marginBottom:2 }}>{item.name}</div>
+                <div style={{ fontSize:11, color:C.textSec, marginBottom:4 }}>{item.arm} · {item.type}</div>
+                {item.certNum && <div style={{ fontSize:11, color:C.textSec }}>Св-во: {item.certNum}</div>}
+                {item.nextDate && <div style={{ fontSize:11, color:sc.color, fontWeight:600, marginTop:2 }}>
+                  До {item.nextDate.split("-").reverse().join(".")}
+                  {daysLeft !== null && daysLeft >= 0 && ` (${daysLeft} дн.)`}
+                  {daysLeft !== null && daysLeft < 0 && ` (просрочено ${Math.abs(daysLeft)} дн.)`}
+                </div>}
+              </div>
+              <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:4 }}>
+                <div style={{ background:sc.bg, color:sc.color, borderRadius:6, padding:"3px 8px", fontSize:10, fontWeight:700 }}>{sc.label}</div>
+                <div style={{ fontSize:16, color:C.textSec }}>›</div>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+
+// ─── ПОЛЬЗОВАТЕЛЬСКОЕ СОГЛАШЕНИЕ ────────────────────────────────────────────
+function EulaScreen({ onAccept, onDecline }) {
+  const [scrolled, setScrolled] = useState(false);
+  const [checked, setChecked] = useState(false);
+  return (
+    <div style={{ width:"100%", height:"100vh", background:"#0D1627", display:"flex", flexDirection:"column", fontFamily:"'Roboto','Arial',sans-serif", overflow:"hidden" }}>
+      <div style={{ background:"#0A1220", padding:"48px 18px 14px", borderBottom:`1px solid #1E2A40`, textAlign:"center", flexShrink:0 }}>
+        <div style={{ fontSize:20, marginBottom:6 }}>🛡️</div>
+        <div style={{ fontSize:16, fontWeight:800, color:"#fff", marginBottom:3 }}>Лицензионное соглашение</div>
+        <div style={{ fontSize:10, color:"#4A7FD4", letterSpacing:2 }}>ВЕРСИЯ 1.0</div>
+      </div>
+      <div style={{ flex:1, overflowY:"auto", padding:"18px 18px 8px", WebkitOverflowScrolling:"touch" }}
+        onScroll={e => { const el=e.target; if(el.scrollTop+el.clientHeight>=el.scrollHeight-40) setScrolled(true); }}>
+        {[
+          ["1. ПРЕДМЕТ СОГЛАШЕНИЯ","Настоящее Соглашение является договором между Вами и правообладателем ПО «ЭМС Инструментарий». Устанавливая приложение, Вы принимаете все условия."],
+          ["2. ИСКЛЮЧИТЕЛЬНЫЕ ПРАВА","Приложение, включая базы данных, алгоритмы, методики расчётов и интерфейс, является объектом интеллектуальной собственности и защищено ГК РФ."],
+          ["3. ОГРАНИЧЕНИЯ","Запрещается передавать, продавать или распространять приложение третьим лицам без письменного разрешения правообладателя."],
+          ["4. ОТВЕТСТВЕННОСТЬ","Незаконное распространение влечёт ответственность по ст.1301 ГК РФ и ст.146 УК РФ."],
+          ["5. ДАННЫЕ","Приложение работает полностью в автономном режиме без подключения к интернету. Все данные пользователя хранятся исключительно на устройстве и не передаются третьим лицам."],
+          ["6. ОТКАЗ ОТ ГАРАНТИЙ","Результаты расчётов носят справочный характер и подлежат верификации согласно действующим нормативным документам."],
+        ].map(([t,tx]) => (
+          <div key={t} style={{ marginBottom:16 }}>
+            <div style={{ fontSize:12, fontWeight:700, color:"#4A9FFF", marginBottom:5 }}>{t}</div>
+            <div style={{ fontSize:12, lineHeight:1.75, color:"#8A9BB8" }}>{tx}</div>
+          </div>
+        ))}
+        {!scrolled && <div style={{ background:"rgba(30,91,232,0.1)", border:"1px solid rgba(30,91,232,0.25)", borderRadius:8, padding:"10px 14px", fontSize:12, color:"#4A9FFF", textAlign:"center" }}>↓ Прокрутите до конца</div>}
+        <div style={{ height:16 }}/>
+      </div>
+      <div style={{ padding:"12px 18px 36px", borderTop:"1px solid #1E2A40", background:"#0A1220", flexShrink:0 }}>
+        <div onClick={()=>scrolled&&setChecked(!checked)} style={{ display:"flex", alignItems:"flex-start", gap:12, marginBottom:14, cursor:scrolled?"pointer":"default", opacity:scrolled?1:0.4 }}>
+          <div style={{ width:22, height:22, minWidth:22, borderRadius:5, marginTop:1, border:`2px solid ${checked?"#1E5BE8":"#2A3A5A"}`, background:checked?"#1E5BE8":"transparent", display:"flex", alignItems:"center", justifyContent:"center" }}>
+            {checked && <span style={{ color:"#fff", fontSize:13, fontWeight:900 }}>✓</span>}
+          </div>
+          <div style={{ fontSize:12, color:"#8A9BB8", lineHeight:1.6 }}>Я ознакомился с условиями и принимаю Лицензионное соглашение.</div>
+        </div>
+        <button onClick={()=>{ if(checked&&scrolled) onAccept(); }} style={{ width:"100%", padding:"14px", borderRadius:12, border:"none", background:checked&&scrolled?"linear-gradient(135deg,#1A3A6E,#1E5BE8)":"#1A2A40", color:checked&&scrolled?"#fff":"#2A3A5A", fontSize:15, fontWeight:800, cursor:checked&&scrolled?"pointer":"default", fontFamily:"inherit", marginBottom:10 }}>
+          {!scrolled?"Прокрутите текст ↓":!checked?"Отметьте согласие":"✓ Принять и войти"}
+        </button>
+        <button onClick={onDecline} style={{ width:"100%", padding:"10px", borderRadius:10, border:"1px solid #1E2A40", background:"transparent", color:"#3A4A6A", fontSize:13, fontWeight:600, cursor:"pointer", fontFamily:"inherit" }}>
+          Отклонить и закрыть
+        </button>
+      </div>
+    </div>
+  );
+}
+
+
 // ─── PS3-STYLE SPLASH ────────────────────────────────────────────────────────
 function SplashScreen({ onDone }) {
   const [pct, setPct] = useState(0);
@@ -4818,9 +5228,9 @@ function EulaScreen({ onAccept, onDecline }) {
           ["4. ОТВЕТСТВЕННОСТЬ ЗА НАРУШЕНИЕ",
             "Незаконное распространение влечёт гражданско-правовую ответственность: возмещение убытков или компенсация от 10 000 до 5 000 000 рублей (ст. 1301 ГК РФ), а также уголовную ответственность по ст. 146 УК РФ (до 6 лет лишения свободы при крупном ущербе)."],
           ["5. ПЕРСОНАЛЬНЫЕ ДАННЫЕ",
-            "Приложение работает в автономном режиме. Данные пользователя хранятся исключительно на устройстве и не передаются третьим лицам. Функция генерации протоколов использует внешний API — конфиденциальные данные на серверах не сохраняются."],
+            "Приложение работает полностью в автономном режиме без подключения к интернету. Все данные пользователя хранятся исключительно на устройстве и не передаются третьим лицам или на серверы."],
           ["6. ОТКАЗ ОТ ГАРАНТИЙ",
-            "Приложение предоставляется «как есть». Правообладатель не несёт ответственности за точность расчётов при использовании в критически важных системах. Все результаты подлежат верификации согласно действующим нормативным документам."],
+            "Результаты расчётов носят справочный характер и подлежат верификации согласно действующим нормативным документам. Правообладатель не несёт ответственности за последствия применения результатов расчётов без надлежащей проверки."],
           ["7. ОБРАТНАЯ СВЯЗЬ",
             "По вопросам лицензирования и технической поддержки обращайтесь через раздел Настройки → Написать разработчику."],
         ].map(([title, text]) => (
@@ -4890,11 +5300,16 @@ function EulaScreen({ onAccept, onDecline }) {
 
 function AppInner() {
   const [splash, setSplash] = useState(true);
+  const [eula, setEula] = useState(() => {
+    try { return !localStorage.getItem("emc_eula_v1"); } catch(e) { return false; }
+  });
   const [tab, setTab] = useState("home");
   const [calcId, setCalcId] = useState(null);
   const [refTab, setRefTab] = useState("abbr");
   const [quizOpen, setQuizOpen] = useState(false);
   const [errorsOpen, setErrorsOpen] = useState(false);
+  const [verifyOpen, setVerifyOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   // Android системная кнопка «Назад»
@@ -4902,6 +5317,8 @@ function AppInner() {
     const handleBack = (e) => {
       if (settingsOpen) { setSettingsOpen(false); e.preventDefault?.(); return; }
       if (errorsOpen) { setErrorsOpen(false); e.preventDefault?.(); return; }
+      if (searchOpen) { setSearchOpen(false); e.preventDefault?.(); return; }
+      if (verifyOpen) { setVerifyOpen(false); e.preventDefault?.(); return; }
       if (quizOpen) { setQuizOpen(false); e.preventDefault?.(); return; }
       if (calcId) { setCalcId(null); e.preventDefault?.(); return; }
       if (tab !== "home") { setTab("home"); e.preventDefault?.(); return; }
@@ -4913,8 +5330,14 @@ function AppInner() {
 
 
   if (splash) return <SplashScreen onDone={() => setSplash(false)} />;
+  if (eula) return (
+    <EulaScreen
+      onAccept={() => { try { localStorage.setItem("emc_eula_v1","1"); } catch(e){} setEula(false); }}
+      onDecline={() => { document.body.innerHTML='<div style="background:#000;height:100vh;display:flex;align-items:center;justify-content:center;color:#333;font-family:sans-serif">Приложение закрыто</div>'; }}
+    />
+  );
 
-  const handleTab = (t) => { setTab(t); if (t !== "calc") setCalcId(null); setSettingsOpen(false); setErrorsOpen(false); };
+  const handleTab = (t) => { setTab(t); if (t !== "calc") setCalcId(null); setSettingsOpen(false); setErrorsOpen(false); setVerifyOpen(false); setSearchOpen(false); };
   const handleSetCalcId = (id) => { setCalcId(id); setTab("calc"); };
 
 
@@ -4939,6 +5362,10 @@ function AppInner() {
           <div style={styles.headerSub}>ГОСТ РВ 20.57.306</div>
         </div>
         <button
+          onClick={() => setSearchOpen(true)}
+          style={{ background: "none", border: "none", color: "#8A9BB8", fontSize: 20, cursor: "pointer", padding: "4px 6px" }}
+        >🔍</button>
+        <button
           onClick={() => setSettingsOpen(!settingsOpen)}
           style={{ background: "none", border: "none", color: settingsOpen ? C.accent : "#8A9BB8", fontSize: 20, cursor: "pointer", padding: "4px 6px" }}
         >⚙️</button>
@@ -4946,12 +5373,16 @@ function AppInner() {
       <div style={styles.content}>
         {settingsOpen
           ? <SettingsScreen onClose={() => setSettingsOpen(false)} />
+          : searchOpen
+          ? <GlobalSearch onClose={() => setSearchOpen(false)} setTab={handleTab} setCalcId={handleSetCalcId} onErrors={() => { setErrorsOpen(true); setSearchOpen(false); }} onVerify={() => { setVerifyOpen(true); setSearchOpen(false); }} onQuiz={() => { setQuizOpen(true); setSearchOpen(false); }} />
+          : verifyOpen
+          ? <VerificationScreen onClose={() => setVerifyOpen(false)} />
           : errorsOpen
           ? <ErrorsScreen onClose={() => setErrorsOpen(false)} />
           : quizOpen
           ? <QuizScreen onClose={() => setQuizOpen(false)} />
           : <>
-              {tab === "home" && <HomeScreen setTab={handleTab} setCalcId={handleSetCalcId} onQuiz={() => setQuizOpen(true)} onErrors={() => setErrorsOpen(true)} />}
+              {tab === "home" && <HomeScreen setTab={handleTab} setCalcId={handleSetCalcId} onQuiz={() => setQuizOpen(true)} onErrors={() => setErrorsOpen(true)} onVerify={() => setVerifyOpen(true)} />}
               {tab === "calc" && <CalculatorsScreen calcId={calcId} setCalcId={setCalcId} />}
               {tab === "tests" && <TestsScreen />}
               {tab === "ref" && <ReferenceScreen refTab={refTab} setRefTab={setRefTab} />}
